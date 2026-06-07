@@ -20,6 +20,7 @@ import '../../core/platform/i_lyric_overlay_controller.dart';
 import '../../core/platform/lyric_overlay_controller.dart';
 import '../../core/platform/lyric_overlay_manager.dart';
 import '../../core/platform/wakelock_controller.dart';
+import '../cache/list_cache_manager.dart';
 
 final getIt = GetIt.instance;
 
@@ -79,6 +80,10 @@ Future<void> setupServiceLocator() async {
 
   // 等待 AuthViewModel 完成初始化
   await getIt<AuthViewModel>().loadSavedAuth();
+
+  // 注册列表缓存管理器
+  getIt.registerLazySingleton<ListCacheManager>(() => ListCacheManager());
+  await getIt<ListCacheManager>().loadToggleState();
 
   // 添加字幕服务注册
   getIt.registerLazySingleton<ISubtitleService>(
