@@ -55,6 +55,19 @@ class CacheManagerScreen extends StatelessWidget {
                   ),
                 ),
                 const Divider(),
+
+                // 列表缓存
+                ListTile(
+                  title: const Text('列表缓存'),
+                  subtitle: Text(viewModel.listCacheSizeFormatted),
+                  trailing: TextButton(
+                    onPressed: viewModel.isLoading 
+                      ? null 
+                      : () => viewModel.clearListCache(),
+                    child: const Text('清理'),
+                  ),
+                ),
+                const Divider(),
                 
                 // 总缓存大小
                 ListTile(
@@ -73,7 +86,10 @@ class CacheManagerScreen extends StatelessWidget {
                 const ListTile(
                   title: Text('缓存说明'),
                   subtitle: Text(
-                    '缓存用于存储最近播放的音频文件和字幕文件，以提高再次播放时的加载速度。'
+                    '音频缓存：存储最近播放的音频文件。\n'
+                    '字幕缓存：存储最近加载的字幕文件。\n'
+                    '列表缓存：存储首页推荐、搜索结果、热门列表、作品详情等数据，'
+                    '开启侧边栏的「使用本地缓存加载列表」后，可在网络不稳定时离线浏览。\n'
                     '系统会自动清理过期和超量的缓存。'
                   ),
                 ),
@@ -84,4 +100,4 @@ class CacheManagerScreen extends StatelessWidget {
       ),
     );
   }
-} 
+}
