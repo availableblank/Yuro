@@ -8,6 +8,7 @@ import 'package:asmrapp/screens/settings/cache_manager_screen.dart';
 import 'package:asmrapp/core/theme/theme_controller.dart';
 import 'package:asmrapp/core/platform/wakelock_controller.dart';
 import 'package:get_it/get_it.dart';
+import 'package:asmrapp/core/cache/list_cache_manager.dart';
 
 class DrawerMenu extends StatelessWidget {
   const DrawerMenu({super.key});
@@ -127,6 +128,19 @@ class DrawerMenu extends StatelessWidget {
                   title: const Text('屏幕常亮'),
                   value: controller.enabled,
                   onChanged: (_) => controller.toggle(),
+                );
+              },
+            ),
+            const Divider(),
+            ListenableBuilder(
+              listenable: GetIt.I<ListCacheManager>(),
+              builder: (context, _) {
+                final cacheManager = GetIt.I<ListCacheManager>();
+                return SwitchListTile(
+                  title: const Text('使用本地缓存加载列表'),
+                  subtitle: const Text('开启后优先从本地缓存加载列表数据，适合网络不稳定时使用'),
+                  value: cacheManager.enabled,
+                  onChanged: (_) => cacheManager.toggle(),
                 );
               },
             ),
