@@ -47,18 +47,18 @@ jobs:
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --debug
 
       - name: Build App Bundle
-        run: flutter build appbundle --release
+        run: flutter build appbundle --debug
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-build
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/bundle/release/app-debug.aab
 
   build-ios:
     runs-on: macos-latest
