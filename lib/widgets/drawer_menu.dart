@@ -14,6 +14,7 @@ import 'package:asmrapp/screens/settings_screen.dart';
 class DrawerMenu extends StatelessWidget {
   const DrawerMenu({super.key});
 
+  /// 显示登录对话框（需传入有效的 NavigatorState，而非已失效的 context）
   void _showLoginDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -55,10 +56,13 @@ class DrawerMenu extends StatelessWidget {
                     authVM.isLoggedIn ? authVM.username ?? '' : '登录',
                   ),
                   onTap: () {
+                    // 登录/登出不涉及页面跳转，直接 pop 即可
                     Navigator.pop(context);
                     if (authVM.isLoggedIn) {
                       authVM.logout();
                     } else {
+                      // pop 后 context 可能失效，但这里 _showLoginDialog 内部
+                      // 会通过 showDialog 自行查找 Navigator
                       _showLoginDialog(context);
                     }
                   },
@@ -66,58 +70,67 @@ class DrawerMenu extends StatelessWidget {
               },
             ),
 
+
             ListTile(
               leading: const Icon(Icons.favorite),
               title: const Text(Strings.favorites),
               onTap: () {
-                Navigator.pop(context);
-                // 检查用户是否已登录
+                // ★ 关键：先获取 NavigatorState 引用
+                final navigator = Navigator.of(context);
                 final authVM = context.read<AuthViewModel>();
+                navigator.pop(); // 关闭侧边栏
+
                 if (!authVM.isLoggedIn) {
-                  // 如果未登录，显示登录对话框
-                  _showLoginDialog(context);
+                  // 使用 navigator.context（始终有效）显示登录对话框
+                  showDialog(
+                    context: navigator.context,
+                    builder: (ctx) => const LoginDialog(),
+                  );
                   return;
                 }
-                // 导航到收藏页面
-                Navigator.push(
-                  context,
+                navigator.push(
                   MaterialPageRoute(
-                    builder: (context) => const FavoritesScreen(),
+                    builder: (_) => const FavoritesScreen(),
                   ),
                 );
               },
             ),
+
+
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text(Strings.settings),
               onTap: () {
-                Navigator.pop(context);
-                // TODO: 导航到设置页面
-Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const SettingsScreen(),
-      ),
-    );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.storage),
-              title: const Text('缓存管理'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
+                // ★ 关键：先获取 NavigatorState 引用，再 pop
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                navigator.push(
                   MaterialPageRoute(
-                    builder: (context) => const CacheManagerScreen(),
+                    builder: (_) => const SettingsScreen(),
                   ),
                 );
               },
             ),
-              Divider(
-                color: Theme.of(context).colorScheme.surfaceVariant,
-                height: 1,
-              ),
+
+
+            ListTile(
+              leading: const Icon(Icons.storage),
+              title: const Text('缓存管理'),
+              onTap: () {
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                navigator.push(
+                  MaterialPageRoute(
+                    builder: (_) => const CacheManagerScreen(),
+                  ),
+                );
+              },
+            ),
+
+            Divider(
+              color: Theme.of(context).colorScheme.surfaceVariant,
+              height: 1,
+            ),
             Consumer<ThemeController>(
               builder: (context, themeController, _) {
                 return ListTile(
