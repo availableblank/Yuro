@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:get_it/get_it.dart';
 import 'package:asmrapp/utils/logger.dart';
+import 'package:asmrapp/core/cache/cache_settings.dart';
 
 /// 列表缓存管理器
 /// 将首页推荐、热门、搜索、作品详情等列表数据缓存到本地文件
@@ -15,9 +17,16 @@ class ListCacheManager extends ChangeNotifier {
   static const String _cacheDirName = 'list_cache';
   static const Duration _cacheDuration = Duration(days: 7);
   static const String _toggleKey = 'use_local_cache_for_lists';
+  static const int defaultLimitMb = 50;
 
   Directory? _cacheDir;
   bool _enabled = false;
+
+  // ---- 便捷取值 ----
+  CacheSettings get _settings => GetIt.I<CacheSettings>();
+  int get _limitMb => _settings.listLimitMb;
+  bool get _isDisabled => _settings.isListDisabled;
+  bool get _isUnlimited => _settings.isListUnlimited;
 
   /// 是否启用「使用本地缓存加载列表」
   bool get enabled => _enabled;
@@ -25,7 +34,6 @@ class ListCacheManager extends ChangeNotifier {
   /// 切换启用状态
   Future<void> toggle() async {
     _enabled = !_enabled;
-    // 持久化开关状态
     try {
       final dir = await _getCacheDir();
       final flagFile = File('${dir.parent.path}/$_toggleKey');
@@ -66,21 +74,21 @@ class ListCacheManager extends ChangeNotifier {
     return base64Url.encode(bytes).replaceAll('=', '');
   }
 
-  /// 读取缓存（返回原始 JSON Map，由调用方自行解析）
+  /// 读取缓存
   Future<Map<String, dynamic>?> get(String key) async {
+    // 禁用时不读取
+    if (_isDisabled) return null;
+
     try {
       final dir = await _getCacheDir();
       final filename = _keyToFilename(key);
       final file = File('${dir.path}/$filename.json');
 
-      if (!await file.exists()) {
-        return null;
-      }
+      if (!await file.exists()) return null;
 
       final content = await file.readAsString();
       final json = jsonDecode(content) as Map<String, dynamic>;
 
-      // 检查是否过期
       final timestampStr = json['timestamp'] as String?;
       if (timestampStr != null) {
         final timestamp = DateTime.parse(timestampStr);
@@ -101,6 +109,9 @@ class ListCacheManager extends ChangeNotifier {
 
   /// 写入缓存
   Future<void> set(String key, Map<String, dynamic> data) async {
+    // 禁用时不写入
+    if (_isDisabled) return;
+
     try {
       final dir = await _getCacheDir();
       final filename = _keyToFilename(key);
@@ -114,6 +125,11 @@ class ListCacheManager extends ChangeNotifier {
 
       await file.writeAsString(jsonEncode(json));
       AppLogger.debug('保存列表缓存: $key');
+
+      // 非无限模式下检查大小
+      if (!_isUnlimited) {
+        await _enforceSizeLimit();
+      }
     } catch (e) {
       AppLogger.error('保存列表缓存失败: $key', e);
     }
@@ -149,6 +165,41 @@ class ListCacheManager extends ChangeNotifier {
     } catch (e) {
       AppLogger.error('获取列表缓存大小失败', e);
       return 0;
+    }
+  }
+
+  // ---- 私有 ----
+
+  /// 按 MB 上限清理最旧文件
+  Future<void> _enforceSizeLimit() async {
+    try {
+      final maxBytes = _limitMb * 1024 * 1024;
+      final currentSize = await getSize();
+      if (currentSize <= maxBytes) return;
+
+      AppLogger.debug('列表缓存超出上限 (${_limitMb}MB)，开始清理...');
+
+      final dir = await _getCacheDir();
+      final files = <File>[];
+      await for (final entity in dir.list()) {
+        if (entity is File && entity.path.endsWith('.json')) {
+          files.add(entity);
+        }
+      }
+
+      // 按修改时间升序（最旧的在前）
+      files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+
+      var remaining = currentSize;
+      for (final file in files) {
+        if (remaining <= maxBytes) break;
+        final len = await file.length();
+        await file.delete();
+        remaining -= len;
+        AppLogger.debug('删除超量列表缓存: ${file.path}');
+      }
+    } catch (e) {
+      AppLogger.error('执行列表缓存大小限制失败', e);
     }
   }
 }
