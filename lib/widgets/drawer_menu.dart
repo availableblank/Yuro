@@ -10,6 +10,7 @@ import 'package:asmrapp/core/platform/wakelock_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:asmrapp/core/cache/list_cache_manager.dart';
 import 'package:asmrapp/screens/settings_screen.dart';
+import 'package:asmrapp/screens/history_screen.dart';
 
 class DrawerMenu extends StatelessWidget {
   const DrawerMenu({super.key});
@@ -70,15 +71,29 @@ class DrawerMenu extends StatelessWidget {
               },
             ),
 
+            // 历史记录入口
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text(Strings.history),
+              onTap: () {
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                navigator.push(
+                  MaterialPageRoute(
+                    builder: (_) => const HistoryScreen(),
+                  ),
+                );
+              },
+            ),
 
             ListTile(
               leading: const Icon(Icons.favorite),
               title: const Text(Strings.favorites),
               onTap: () {
-                // ★ 关键：先获取 NavigatorState 引用
+                // 先获取 NavigatorState 引用
                 final navigator = Navigator.of(context);
                 final authVM = context.read<AuthViewModel>();
-                navigator.pop(); // 关闭侧边栏
+                navigator.pop();
 
                 if (!authVM.isLoggedIn) {
                   // 使用 navigator.context（始终有效）显示登录对话框
@@ -96,12 +111,11 @@ class DrawerMenu extends StatelessWidget {
               },
             ),
 
-
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text(Strings.settings),
               onTap: () {
-                // ★ 关键：先获取 NavigatorState 引用，再 pop
+                // 先获取 NavigatorState 引用，再 pop
                 final navigator = Navigator.of(context);
                 navigator.pop();
                 navigator.push(
@@ -111,7 +125,6 @@ class DrawerMenu extends StatelessWidget {
                 );
               },
             ),
-
 
             ListTile(
               leading: const Icon(Icons.storage),
@@ -158,7 +171,8 @@ class DrawerMenu extends StatelessWidget {
                 final cacheManager = GetIt.I<ListCacheManager>();
                 return SwitchListTile(
                   title: const Text('使用本地缓存加载列表'),
-                  subtitle: const Text('开启后优先从本地缓存加载列表数据，适合网络不稳定时使用'),
+                  subtitle:
+                      const Text('开启后优先从本地缓存加载列表数据'),
                   value: cacheManager.enabled,
                   onChanged: (_) => cacheManager.toggle(),
                 );

@@ -21,7 +21,8 @@ import '../../core/platform/lyric_overlay_controller.dart';
 import '../../core/platform/lyric_overlay_manager.dart';
 import '../../core/platform/wakelock_controller.dart';
 import '../cache/list_cache_manager.dart';
-import '../cache/cache_settings.dart'; 
+import '../cache/cache_settings.dart';
+import '../../data/repositories/history_repository.dart';
 
 final getIt = GetIt.instance;
 
@@ -34,7 +35,7 @@ Future<void> setupServiceLocator() async {
   // 注册 SharedPreferences 实例
   getIt.registerSingleton<SharedPreferences>(prefs);
 
-// 注册 CacheSettings（新增）
+  // 注册 CacheSettings
   getIt.registerSingleton<CacheSettings>(CacheSettings(prefs));
 
   // 注册 PlaybackStateRepository
@@ -103,19 +104,24 @@ Future<void> setupServiceLocator() async {
 
   // 注册 WakeLockController
   getIt.registerLazySingleton(() => WakeLockController(prefs));
+
+  // 注册历史记录仓库
+  getIt.registerLazySingleton<HistoryRepository>(
+    () => HistoryRepository(prefs),
+  );
 }
 
 Future<void> setupSubtitleServices() async {
   getIt.registerLazySingleton<SubtitleLoader>(() => SubtitleLoader());
   if (Platform.isAndroid) {
-    getIt.registerLazySingleton<ILyricOverlayController>(() => LyricOverlayController());
+    getIt.registerLazySingleton<ILyricOverlayController>(
+        () => LyricOverlayController());
   } else {
-    getIt.registerLazySingleton<ILyricOverlayController>(() => DummyLyricOverlayController());
+    getIt.registerLazySingleton<ILyricOverlayController>(
+        () => DummyLyricOverlayController());
   }
-  getIt.registerLazySingleton(() => LyricOverlayManager(
-    controller: getIt(),
-    subtitleService: getIt(),
-  ));
+  getIt.registerLazySingleton(
+      () => LyricOverlayManager(controller: getIt(), subtitleService: getIt()));
 
   // 初始化悬浮窗管理器
   await getIt<LyricOverlayManager>().initialize();
