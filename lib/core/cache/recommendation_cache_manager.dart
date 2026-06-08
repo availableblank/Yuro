@@ -1,35 +1,40 @@
 import 'dart:collection';
+import 'package:get_it/get_it.dart';
 import 'package:asmrapp/data/services/api_service.dart';
 import 'package:asmrapp/utils/logger.dart';
+import 'package:asmrapp/core/cache/cache_settings.dart';
 
 class RecommendationCacheManager {
-  // 单例模式
-  static final RecommendationCacheManager _instance = RecommendationCacheManager._internal();
+  static final RecommendationCacheManager _instance =
+      RecommendationCacheManager._internal();
   factory RecommendationCacheManager() => _instance;
   RecommendationCacheManager._internal();
 
-  // 使用 LinkedHashMap 便于按访问顺序管理缓存
   final _cache = LinkedHashMap<String, _CacheItem>();
-  
-  // 缓存配置
-  static const int _maxCacheSize = 1000; // 最大缓存条目数
-  static const Duration _cacheDuration = Duration(hours: 24); // 缓存有效期
 
-  /// 生成缓存键
+  static const Duration _cacheDuration = Duration(hours: 24);
+  static const int defaultLimitEntries = 1000;
+
+  // ---- 便捷取值 ----
+  CacheSettings get _settings => GetIt.I<CacheSettings>();
+  int get _maxCacheSize => _settings.recommendationLimitEntries;
+  bool get _isDisabled => _settings.isRecommendationDisabled;
+  bool get _isUnlimited => _settings.isRecommendationUnlimited;
+
   String _generateKey(String itemId, int page, int subtitle) {
     return '$itemId-$page-$subtitle';
   }
 
   /// 获取缓存数据
   WorksResponse? get(String itemId, int page, int subtitle) {
+    // 禁用时不返回缓存
+    if (_isDisabled) return null;
+
     final key = _generateKey(itemId, page, subtitle);
     final item = _cache[key];
 
-    if (item == null) {
-      return null;
-    }
+    if (item == null) return null;
 
-    // 检查是否过期
     if (item.isExpired) {
       _cache.remove(key);
       AppLogger.debug('缓存已过期: $key');
@@ -42,10 +47,13 @@ class RecommendationCacheManager {
 
   /// 存储缓存数据
   void set(String itemId, int page, int subtitle, WorksResponse data) {
+    // 禁用时不写入
+    if (_isDisabled) return;
+
     final key = _generateKey(itemId, page, subtitle);
-    
-    // 检查缓存大小,如果达到上限则移除最早的条目
-    if (_cache.length >= _maxCacheSize) {
+
+    // 非无限模式下检查条目数
+    if (!_isUnlimited && _cache.length >= _maxCacheSize) {
       _cache.remove(_cache.keys.first);
     }
 
@@ -64,15 +72,18 @@ class RecommendationCacheManager {
     _cache.removeWhere((key, _) => key.startsWith('$itemId-'));
     AppLogger.debug('移除作品缓存: $itemId');
   }
+
+  /// 当前缓存条目数
+  int get entryCount => _cache.length;
 }
 
-/// 缓存条目包装类
 class _CacheItem {
   final WorksResponse data;
   final DateTime timestamp;
 
   _CacheItem(this.data) : timestamp = DateTime.now();
 
-  bool get isExpired => 
-    DateTime.now().difference(timestamp) > RecommendationCacheManager._cacheDuration;
-} 
+  bool get isExpired =>
+      DateTime.now().difference(timestamp) >
+      RecommendationCacheManager._cacheDuration;
+}
