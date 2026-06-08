@@ -21,6 +21,7 @@ import '../../core/platform/lyric_overlay_controller.dart';
 import '../../core/platform/lyric_overlay_manager.dart';
 import '../../core/platform/wakelock_controller.dart';
 import '../cache/list_cache_manager.dart';
+import '../cache/cache_settings.dart'; 
 
 final getIt = GetIt.instance;
 
@@ -32,6 +33,9 @@ Future<void> setupServiceLocator() async {
 
   // 注册 SharedPreferences 实例
   getIt.registerSingleton<SharedPreferences>(prefs);
+
+// 注册 CacheSettings（新增）
+  getIt.registerSingleton<CacheSettings>(CacheSettings(prefs));
 
   // 注册 PlaybackStateRepository
   getIt.registerLazySingleton<IPlaybackStateRepository>(
