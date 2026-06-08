@@ -9,6 +9,7 @@ import 'package:asmrapp/core/theme/theme_controller.dart';
 import 'package:asmrapp/core/platform/wakelock_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:asmrapp/core/cache/list_cache_manager.dart';
+import 'package:asmrapp/screens/settings_screen.dart';
 
 class DrawerMenu extends StatelessWidget {
   const DrawerMenu({super.key});
@@ -92,6 +93,12 @@ class DrawerMenu extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 // TODO: 导航到设置页面
+Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
+      ),
+    );
               },
             ),
             ListTile(
