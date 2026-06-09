@@ -10,6 +10,9 @@ import 'package:asmrapp/core/platform/wakelock_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:asmrapp/core/cache/list_cache_manager.dart';
 import 'package:asmrapp/screens/settings_screen.dart';
+import 'package:asmrapp/data/repositories/history_repository.dart';
+import 'package:asmrapp/presentation/viewmodels/history_viewmodel.dart';
+import 'package:asmrapp/screens/history_screen.dart';
 
 class DrawerMenu extends StatelessWidget {
   const DrawerMenu({super.key});
@@ -75,7 +78,7 @@ class DrawerMenu extends StatelessWidget {
               leading: const Icon(Icons.favorite),
               title: const Text(Strings.favorites),
               onTap: () {
-                // ★ 关键：先获取 NavigatorState 引用
+                // 先获取 NavigatorState 引用
                 final navigator = Navigator.of(context);
                 final authVM = context.read<AuthViewModel>();
                 navigator.pop(); // 关闭侧边栏
@@ -101,7 +104,7 @@ class DrawerMenu extends StatelessWidget {
               leading: const Icon(Icons.settings),
               title: const Text(Strings.settings),
               onTap: () {
-                // ★ 关键：先获取 NavigatorState 引用，再 pop
+                // 先获取 NavigatorState 引用，再 pop
                 final navigator = Navigator.of(context);
                 navigator.pop();
                 navigator.push(
@@ -126,6 +129,27 @@ class DrawerMenu extends StatelessWidget {
                 );
               },
             ),
+
+
+ListTile(
+  leading: const Icon(Icons.history),
+  title: const Text('历史记录'),
+  onTap: () {
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    // 需要用 Provider 提供 HistoryViewModel
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => HistoryViewModel(
+            repository: GetIt.I<HistoryRepository>(),
+          ),
+          child: const HistoryScreen(),
+        ),
+      ),
+    );
+  },
+),            
 
             Divider(
               color: Theme.of(context).colorScheme.surfaceVariant,
