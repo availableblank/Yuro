@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:asmrapp/core/theme/theme_controller.dart';
 import 'package:asmrapp/core/platform/wakelock_controller.dart';
 import 'package:asmrapp/screens/settings/cache_manager_screen.dart';
+import 'package:asmrapp/core/cache/history_settings.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -72,6 +73,73 @@ class SettingsScreen extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (context) => const CacheManagerScreen(),
                 ),
+              );
+            },
+          ),
+
+          // 历史记录上限设置
+          const Divider(),
+          ListenableBuilder(
+            listenable: GetIt.I<HistorySettings>(),
+            builder: (context, _) {
+              final settings = GetIt.I<HistorySettings>();
+              return ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('历史记录上限'),
+                subtitle: Text('当前上限：${settings.maxCount} 条'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: settings.maxCount > 20
+                          ? () => settings.setMaxCount(settings.maxCount - 100)
+                          : null,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: settings.maxCount < 2000
+                          ? () => settings.setMaxCount(settings.maxCount + 100)
+                          : null,
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  // 弹窗逻辑内联
+                  final controller = TextEditingController(
+                    text: settings.maxCount.toString(),
+                  );
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('历史记录上限'),
+                      content: TextField(
+                        controller: controller,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: '最大条数',
+                          hintText: '20~2000',
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('取消'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            final count = int.tryParse(controller.text);
+                            if (count != null) {
+                              settings.setMaxCount(count);
+                            }
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('确定'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           ),
