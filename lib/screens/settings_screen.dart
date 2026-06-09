@@ -4,8 +4,6 @@ import 'package:get_it/get_it.dart';
 import 'package:asmrapp/core/theme/theme_controller.dart';
 import 'package:asmrapp/core/platform/wakelock_controller.dart';
 import 'package:asmrapp/screens/settings/cache_manager_screen.dart';
-import 'package:asmrapp/common/constants/strings.dart';
-import 'package:asmrapp/data/repositories/history_repository.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -32,61 +30,8 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  // 显示修改上限对话框
-  Future<void> _showMaxHistoryDialog(BuildContext context) async {
-    final repository = GetIt.I<HistoryRepository>();
-    final controller = TextEditingController(text: repository.maxCount.toString());
-
-    final result = await showDialog<int>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(Strings.maxHistoryCount),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: '上限条数',
-            hintText: '例如：500',
-            helperText: '设为 0 则不清除旧记录（不推荐）',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(Strings.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = int.tryParse(controller.text.trim());
-              if (value != null && value >= 0) {
-                Navigator.pop(ctx, value);
-              } else {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('请输入有效数字')),
-                );
-              }
-            },
-            child: const Text(Strings.confirm),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null && context.mounted) {
-      await repository.setMaxCount(result);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('历史记录上限已设为 $result 条')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final repository = GetIt.I<HistoryRepository>();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -114,17 +59,6 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: (_) => controller.toggle(),
               );
             },
-          ),
-          const Divider(),
-          // 历史记录上限设置
-          ListTile(
-            leading: const Icon(Icons.history),
-            title: const Text(Strings.maxHistoryCount),
-            subtitle: Text(
-              '当前上限：${repository.maxCount} 条\n${Strings.maxHistoryCountDesc}',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showMaxHistoryDialog(context),
           ),
           const Divider(),
           ListTile(
