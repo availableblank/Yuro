@@ -34,9 +34,18 @@ Future<void> setupServiceLocator() async {
   // 注册 SharedPreferences 实例
   getIt.registerSingleton<SharedPreferences>(prefs);
 
-// 注册 CacheSettings（新增）
+  // 注册 CacheSettings
   getIt.registerSingleton<CacheSettings>(CacheSettings(prefs));
 
+
+  // 注册 HistorySettings
+getIt.registerSingleton<HistorySettings>(HistorySettings(prefs));
+
+  // 注册 HistoryRepository
+getIt.registerSingleton<HistoryRepository>(
+  HistoryRepository(
+    prefs: prefs,
+    settings: getIt<HistorySettings>(),),);
   // 注册 PlaybackStateRepository
   getIt.registerLazySingleton<IPlaybackStateRepository>(
     () => PlaybackStateRepository(getIt()),
