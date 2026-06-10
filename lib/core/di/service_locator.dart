@@ -24,6 +24,7 @@ import '../cache/list_cache_manager.dart';
 import '../cache/cache_settings.dart'; 
 import '../../core/cache/history_settings.dart';
 import '../../data/repositories/history_repository.dart';
+import '../../core/hitstory/history_recorder.dart';
 
 final getIt = GetIt.instance;
 
@@ -41,13 +42,25 @@ Future<void> setupServiceLocator() async {
 
 
   // 注册 HistorySettings
-getIt.registerSingleton<HistorySettings>(HistorySettings(prefs));
+  getIt.registerSingleton<HistorySettings>(HistorySettings(prefs));
 
   // 注册 HistoryRepository
-getIt.registerSingleton<HistoryRepository>(
-  HistoryRepository(
-    prefs: prefs,
-    settings: getIt<HistorySettings>(),),);
+  getIt.registerSingleton<HistoryRepository>(
+    HistoryRepository(
+      prefs: prefs,
+      settings: getIt<HistorySettings>(),
+    ),
+  );
+
+  // 创建并启动历史记录器
+  getIt.registerSingleton<HistoryRecorder>(
+    HistoryRecorder(
+      eventHub: getIt<PlaybackEventHub>(),
+      repository: getIt<HistoryRepository>(),
+    ),
+  );
+  getIt<HistoryRecorder>().start();
+
   // 注册 PlaybackStateRepository
   getIt.registerLazySingleton<IPlaybackStateRepository>(
     () => PlaybackStateRepository(getIt()),

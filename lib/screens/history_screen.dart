@@ -53,12 +53,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: TextStyle(color: theme.colorScheme.onPrimary),
+                style: TextStyle(color: theme.colorScheme.onSurface),
                 decoration: InputDecoration(
                   hintText: '搜索标题、RJ号或文件名…',
                   hintStyle: TextStyle(
-                    color: theme.colorScheme.onPrimary.withAlpha(160),
-                  ),
+				  color: theme.colorScheme.onSurfaceVariant,
+				),
                   border: InputBorder.none,
                 ),
                 onChanged: (value) {
@@ -291,16 +291,22 @@ class _HistoryListTile extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final diff = now.difference(time);
+	String _formatTime(DateTime time) {
+	  final now = DateTime.now();
+	  final today = DateTime(now.year, now.month, now.day);
+	  final yesterday = today.subtract(const Duration(days: 1));
+	  final timeDate = DateTime(time.year, time.month, time.day);
+	  final hourMinute =
+		  '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 
-    if (diff.inMinutes < 1) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} 分钟前';
-    if (diff.inHours < 24) return '${diff.inHours} 小时前';
-    if (diff.inDays < 7) return '${diff.inDays} 天前';
-
-    return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} '
-        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-  }
+	  if (timeDate == today) {
+		return '今天 $hourMinute';
+	  } else if (timeDate == yesterday) {
+		return '昨天 $hourMinute';
+	  } else if (time.year == now.year) {
+		return '${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} $hourMinute';
+	  } else {
+		return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} $hourMinute';
+	  }
+	}
 }

@@ -13,8 +13,6 @@ import 'package:asmrapp/widgets/detail/playlist_selection_dialog.dart';
 import 'package:asmrapp/data/models/mark_status.dart';
 import 'package:asmrapp/widgets/detail/mark_selection_dialog.dart';
 import 'package:dio/dio.dart';
-import '../../data/repositories/history_repository.dart';
-import '../../data/models/history/history_record.dart';
 
 class DetailViewModel extends ChangeNotifier {
   late final ApiService _apiService;
@@ -139,7 +137,6 @@ class DetailViewModel extends ChangeNotifier {
       );
 
       await _audioService.playWithContext(playbackContext);
-      _saveHistory(file);
     } catch (e) {
       if (!_disposed) {
         AppLogger.error('播放失败', e);
@@ -292,25 +289,6 @@ class DetailViewModel extends ChangeNotifier {
       ),
     );
   }
-
-
-void _saveHistory(Child file) {
-  try {
-    final repo = GetIt.I<HistoryRepository>();
-    final record = HistoryRecord(
-      workId: work.id ?? 0,
-      sourceId: work.sourceId ?? '',
-      mainCoverUrl: work.mainCoverUrl ?? '',
-      title: work.title ?? '',
-      lastPlayedFileName: file.title ?? file.workTitle ?? '',
-      lastPlayedTime: DateTime.now(),
-      lastProgressSeconds: 0,
-    );
-    repo.addOrUpdate(record);
-  } catch (e) {
-    AppLogger.error('保存历史记录失败', e);
-  }
-}
 
   @override
   void dispose() {

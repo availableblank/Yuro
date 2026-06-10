@@ -18,7 +18,8 @@ class HistoryRepository extends ChangeNotifier {
   })  : _prefs = prefs,
         _settings = settings;
 
-  /// 从 SharedPreferences 读取全部记录（已按时间倒序）
+  // ── 内部读写 ──
+
   List<HistoryRecord> _readAll() {
     if (_cachedAll != null) return _cachedAll!;
 
@@ -33,19 +34,16 @@ class HistoryRepository extends ChangeNotifier {
       _cachedAll = list
           .map((e) => HistoryRecord.fromJson(e as Map<String, dynamic>))
           .toList();
-      // 保证倒序（最新在前）
       _cachedAll!.sort((a, b) => b.lastPlayedTime.compareTo(a.lastPlayedTime));
       return _cachedAll!;
     } catch (e) {
-      debugPrint('HistoryRepository: 解析历史记录失败 - $e');
+      debugPrint('HistoryRepository: 解析失败 - $e');
       _cachedAll = [];
       return _cachedAll!;
     }
   }
 
-  /// 持久化全部记录
   Future<void> _writeAll(List<HistoryRecord> records) async {
-    // 按上限截断
     final max = _settings.maxCount;
     if (records.length > max) {
       records = records.sublist(0, max);
@@ -56,13 +54,20 @@ class HistoryRepository extends ChangeNotifier {
     _cachedAll = records;
   }
 
-  /// 按 workId 去重：已存在则更新时间/进度/文件名，否则插入到最前
+  /// 清除内存缓存（供 HistorySettings 变更时强制重读）
+  void invalidateCache() {
+    _cachedAll = null;
+  }
+
+  // ── 公开方法 ──
+
+  /// 添加或更新一条记录。
+  /// 静默写入，不触发 notifyListeners（避免每 2 秒打断 UI 分页状态）
   Future<void> addOrUpdate(HistoryRecord record) async {
     final all = _readAll();
     final index = all.indexWhere((r) => r.workId == record.workId);
 
     if (index != -1) {
-      // 已存在：更新信息并移到最前
       final updated = all[index].updatePlayInfo(
         time: record.lastPlayedTime,
         progressSeconds: record.lastProgressSeconds,
@@ -71,24 +76,22 @@ class HistoryRepository extends ChangeNotifier {
       all.removeAt(index);
       all.insert(0, updated);
     } else {
-      // 新纪录：插入到最前
       all.insert(0, record);
     }
 
     await _writeAll(all);
-    notifyListeners();
+    // 故意不调用 notifyListeners()
   }
 
-  /// 获取分页记录
-  /// [offset] 起始索引，[limit] 每页条数，[query] 搜索关键字（可选）
   List<HistoryRecord> getPaged({
     required int offset,
     required int limit,
     String query = '',
   }) {
+    // 每次都重新读取以保证数据最新（进入历史页时）
+    invalidateCache();
     List<HistoryRecord> source = _readAll();
 
-    // 搜索过滤
     if (query.isNotEmpty) {
       source = source.where((r) => r.matchesQuery(query)).toList();
     }
@@ -98,13 +101,14 @@ class HistoryRepository extends ChangeNotifier {
     return source.sublist(offset, end);
   }
 
-  /// 获取总记录数（用于分页判断）
   int totalCount({String query = ''}) {
-    if (query.isEmpty) return _readAll().length;
-    return _readAll().where((r) => r.matchesQuery(query)).length;
+    invalidateCache();
+    final all = _readAll();
+    if (query.isEmpty) return all.length;
+    return all.where((r) => r.matchesQuery(query)).length;
   }
 
-  /// 删除单条记录
+  /// 删除单条 —— 触发 UI 更新
   Future<void> removeRecord(int workId) async {
     final all = _readAll();
     all.removeWhere((r) => r.workId == workId);
@@ -112,18 +116,10 @@ class HistoryRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 清空所有记录
+  /// 清空全部 —— 触发 UI 更新
   Future<void> clearAll() async {
     _cachedAll = [];
     await _prefs.setString(_keyHistory, '[]');
     notifyListeners();
-  }
-
-  /// 供外部监听上限变更后裁剪
-  void onMaxCountChanged() {
-    final all = _readAll();
-    if (all.length > _settings.maxCount) {
-      _writeAll(all); // _writeAll 内部会截断
-    }
   }
 }
