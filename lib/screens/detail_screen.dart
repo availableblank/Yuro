@@ -96,19 +96,6 @@ class DetailScreen extends StatelessWidget {
                     return WorkFilesList(
                       files: viewModel.files!,
 				onFileTap: (file) async {
-				  try {
-					await viewModel.playFile(file, context);
-				  } catch (e) {
-					if (context.mounted) {
-					  ScaffoldMessenger.of(context).showSnackBar(
-						SnackBar(content: Text('播放失败: $e')),
-					  );
-					}
-				  }
-				},
-
-				// 替换为：
-				onFileTap: (file) async {
 				  final type = file.type?.toLowerCase();
 
 				  if (type == 'audio') {
