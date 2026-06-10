@@ -96,40 +96,41 @@ class DetailScreen extends StatelessWidget {
                     return WorkFilesList(
                       files: viewModel.files!,
 				onFileTap: (file) async {
-				  final type = file.type?.toLowerCase();
+  final type = file.type?.toLowerCase();
 
-				  if (type == 'audio') {
-					// ---- 音频文件：播放 ----
-					try {
-					  await viewModel.playFile(file, context);
-					} catch (e) {
-					  if (context.mounted) {
-						ScaffoldMessenger.of(context).showSnackBar(
-						  SnackBar(content: Text('播放失败: $e')),
-						);
-					  }
-					}
-				  } else if (WorkFileItem.isImageType(type,title: file.title)) {
-					// ---- 图片文件：全屏预览 ----
-					final imageUrl = file.mediaDownloadUrl ?? file.mediaStreamUrl;
-					if (imageUrl != null && imageUrl.isNotEmpty) {
-					  Navigator.of(context).push(
-						MaterialPageRoute(
-						  builder: (_) => ImageViewerScreen(
-							imageUrl: imageUrl,
-							title: file.title,
-						  ),
-						),
-					  );
-					} else {
-					  if (context.mounted) {
-						ScaffoldMessenger.of(context).showSnackBar(
-						  const SnackBar(content: Text('图片链接不存在')),
-						);
-					  }
-					}
-				  }
-				},
+  if (type == 'audio') {
+    // 音频 → 播放
+    try {
+      await viewModel.playFile(file, context);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('播放失败: $e')),
+        );
+      }
+    }
+  } else if (type == 'image') {
+    // 图片 → 全屏预览
+    final imageUrl = file.mediaDownloadUrl ?? file.mediaStreamUrl;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ImageViewerScreen(
+            imageUrl: imageUrl,
+            title: file.title,
+          ),
+        ),
+      );
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('图片链接不存在')),
+        );
+      }
+    }
+  }
+  // folder / text / lrc / vtt 等其他类型暂不响应点击
+},
                     );
                   }
 
