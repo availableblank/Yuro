@@ -24,7 +24,7 @@ import '../cache/list_cache_manager.dart';
 import '../cache/cache_settings.dart'; 
 import '../../core/cache/history_settings.dart';
 import '../../data/repositories/history_repository.dart';
-import '../../core/hitstory/history_recorder.dart';
+import '../../core/history/history_recorder.dart';
 
 final getIt = GetIt.instance;
 
