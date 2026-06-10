@@ -109,7 +109,7 @@ class DetailScreen extends StatelessWidget {
 						);
 					  }
 					}
-				  } else if (WorkFileItem.isImageType(type)) {
+				  } else if (WorkFileItem.isImageType(type,title: file.title)) {
 					// ---- 图片文件：全屏预览 ----
 					final imageUrl = file.mediaDownloadUrl ?? file.mediaStreamUrl;
 					if (imageUrl != null && imageUrl.isNotEmpty) {
