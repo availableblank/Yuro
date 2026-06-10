@@ -302,7 +302,7 @@ void _saveHistory(Child file) {
       sourceId: work.sourceId ?? '',
       mainCoverUrl: work.mainCoverUrl ?? '',
       title: work.title ?? '',
-      lastPlayedFileName: file.title ?? file.name ?? '',
+      lastPlayedFileName: file.title ?? file.workTitle ?? '',
       lastPlayedTime: DateTime.now(),
       lastProgressSeconds: 0,
     );
