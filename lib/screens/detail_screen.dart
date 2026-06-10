@@ -9,6 +9,8 @@ import 'package:asmrapp/widgets/detail/work_files_skeleton.dart';
 import 'package:asmrapp/presentation/viewmodels/detail_viewmodel.dart';
 import 'package:asmrapp/widgets/detail/work_action_buttons.dart';
 import 'package:asmrapp/screens/similar_works_screen.dart';
+import 'package:asmrapp/widgets/detail/work_file_item.dart';
+import 'package:asmrapp/screens/image_viewer_screen.dart';
 
 class DetailScreen extends StatelessWidget {
   final Work work;
@@ -93,17 +95,54 @@ class DetailScreen extends StatelessWidget {
                   if (viewModel.files != null) {
                     return WorkFilesList(
                       files: viewModel.files!,
-                      onFileTap: (file) async {
-                        try {
-                          await viewModel.playFile(file, context);
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('播放失败: $e')),
-                            );
-                          }
-                        }
-                      },
+				onFileTap: (file) async {
+				  try {
+					await viewModel.playFile(file, context);
+				  } catch (e) {
+					if (context.mounted) {
+					  ScaffoldMessenger.of(context).showSnackBar(
+						SnackBar(content: Text('播放失败: $e')),
+					  );
+					}
+				  }
+				},
+
+				// 替换为：
+				onFileTap: (file) async {
+				  final type = file.type?.toLowerCase();
+
+				  if (type == 'audio') {
+					// ---- 音频文件：播放 ----
+					try {
+					  await viewModel.playFile(file, context);
+					} catch (e) {
+					  if (context.mounted) {
+						ScaffoldMessenger.of(context).showSnackBar(
+						  SnackBar(content: Text('播放失败: $e')),
+						);
+					  }
+					}
+				  } else if (WorkFileItem.isImageType(type)) {
+					// ---- 图片文件：全屏预览 ----
+					final imageUrl = file.mediaDownloadUrl ?? file.mediaStreamUrl;
+					if (imageUrl != null && imageUrl.isNotEmpty) {
+					  Navigator.of(context).push(
+						MaterialPageRoute(
+						  builder: (_) => ImageViewerScreen(
+							imageUrl: imageUrl,
+							title: file.title,
+						  ),
+						),
+					  );
+					} else {
+					  if (context.mounted) {
+						ScaffoldMessenger.of(context).showSnackBar(
+						  const SnackBar(content: Text('图片链接不存在')),
+						);
+					  }
+					}
+				  }
+				},
                     );
                   }
 

@@ -15,35 +15,65 @@ class WorkFileItem extends StatelessWidget {
     this.onFileTap,
   });
 
+  /// 判断是否为图片类型（基于文件扩展名）
+  static bool isImageType(String? type) {
+    if (type == null || type.isEmpty) return false;
+    const imageExtensions = {
+      'png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif',
+      'svg', 'heic', 'heif', 'tiff', 'tif', 'ico',
+      'jfif', 'pjpeg', 'pjp', 'avif',
+    };
+    return imageExtensions.contains(type.toLowerCase());
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool isAudio = file.type?.toLowerCase() == 'audio';
+    final type = file.type?.toLowerCase();
+    final bool isAudio = type == 'audio';
+    final bool isImage = isImageType(type);
+    final bool canTap = isAudio || isImage;
     final colorScheme = Theme.of(context).colorScheme;
-    
+
+    // 根据文件类型选择图标和颜色
+    IconData leadingIcon;
+    Color? iconColor;
+    if (isAudio) {
+      leadingIcon = Icons.audio_file;
+      iconColor = Colors.green;
+    } else if (isImage) {
+      leadingIcon = Icons.image;
+      iconColor = Colors.orange;
+    } else {
+      leadingIcon = Icons.insert_drive_file;
+      iconColor = Colors.blue;
+    }
+
     return Padding(
       padding: EdgeInsets.only(left: indentation),
       child: ListTile(
         title: Text(
           file.title ?? '',
-          style: TextStyle(
-            color: colorScheme.onSurface,
-          ),
+          style: TextStyle(color: colorScheme.onSurface),
         ),
         subtitle: Text(
           FileSizeFormatter.format(file.size),
-          style: TextStyle(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
-        leading: Icon(
-          isAudio ? Icons.audio_file : Icons.insert_drive_file,
-          color: isAudio ? Colors.green : Colors.blue,
-        ),
+        leading: Icon(leadingIcon, color: iconColor),
+        trailing: canTap
+            ? Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant)
+            : null,
         dense: true,
-        onTap: isAudio ? () {
-          AppLogger.debug('点击音频文件: ${file.title}');
-          onFileTap?.call(file);
-        } : null,
+        onTap: canTap
+            ? () {
+                if (isAudio) {
+                  AppLogger.debug('点击音频文件: ${file.title}');
+                } else {
+                  AppLogger.debug('点击图片文件: ${file.title}');
+                }
+                onFileTap?.call(file);
+              }
+            : null,
       ),
     );
   }
