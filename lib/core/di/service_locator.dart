@@ -22,6 +22,8 @@ import '../../core/platform/lyric_overlay_manager.dart';
 import '../../core/platform/wakelock_controller.dart';
 import '../cache/list_cache_manager.dart';
 import '../cache/cache_settings.dart'; 
+import '../../core/cache/history_settings.dart';
+import '../../data/repositories/history_repository.dart';
 
 final getIt = GetIt.instance;
 

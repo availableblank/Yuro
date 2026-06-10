@@ -13,6 +13,8 @@ import 'package:asmrapp/widgets/detail/playlist_selection_dialog.dart';
 import 'package:asmrapp/data/models/mark_status.dart';
 import 'package:asmrapp/widgets/detail/mark_selection_dialog.dart';
 import 'package:dio/dio.dart';
+import '../../data/repositories/history_repository.dart';
+import '../../data/models/history/history_record.dart';
 
 class DetailViewModel extends ChangeNotifier {
   late final ApiService _apiService;
