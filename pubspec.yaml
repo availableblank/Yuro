@@ -55,6 +55,7 @@ dependencies:
   marquee: ^2.3.0
   wakelock_plus: ^1.2.8
   photo_view: ^0.15.0
+  charset: ^2.0.0
 
 dev_dependencies:
   flutter_test:

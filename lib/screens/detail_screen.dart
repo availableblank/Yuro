@@ -10,6 +10,7 @@ import 'package:asmrapp/presentation/viewmodels/detail_viewmodel.dart';
 import 'package:asmrapp/widgets/detail/work_action_buttons.dart';
 import 'package:asmrapp/screens/similar_works_screen.dart';
 import 'package:asmrapp/screens/image_viewer_screen.dart';
+import 'package:asmrapp/screens/text_viewer_screen.dart';  // 新增
 
 class DetailScreen extends StatelessWidget {
   final Work work;
@@ -20,6 +21,14 @@ class DetailScreen extends StatelessWidget {
     required this.work,
     this.fromPlayer = false,
   });
+
+  /// 通过文件名扩展名判断是否为文本文件
+  bool _isTextByExtension(String filename) {
+    final lower = filename.toLowerCase();
+    return lower.endsWith('.txt') ||
+        lower.endsWith('.tt') ||
+        lower.endsWith('.lrc');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +111,7 @@ class DetailScreen extends StatelessWidget {
                           viewModel.navigateInto(folder),
                       onFileTap: (file) async {
                         final type = file.type?.toLowerCase();
+                        final fileName = file.title ?? '';
 
                         if (type == 'audio') {
                           try {
@@ -129,6 +139,26 @@ class DetailScreen extends StatelessWidget {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('图片链接不存在')),
+                              );
+                            }
+                          }
+                        } else if (_isTextByExtension(fileName)) {
+                          // 通过扩展名识别文本文件
+                          final textUrl =
+                              file.mediaDownloadUrl ?? file.mediaStreamUrl;
+                          if (textUrl != null && textUrl.isNotEmpty) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TextViewerScreen(
+                                  textUrl: textUrl,
+                                  title: fileName,
+                                ),
+                              ),
+                            );
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('文本链接不存在')),
                               );
                             }
                           }
