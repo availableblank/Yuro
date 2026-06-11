@@ -11,7 +11,7 @@ class WorkFileItem extends StatelessWidget {
   const WorkFileItem({
     super.key,
     required this.file,
-    required this.indentation,
+    this.indentation = 0,
     this.onFileTap,
   });
 

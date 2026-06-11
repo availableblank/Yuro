@@ -23,7 +23,10 @@ class DetailViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   bool _disposed = false;
-  
+
+  // 文件浏览导航状态
+  List<Child> _currentPath = [];
+
   bool _hasRecommendations = false;
   bool _checkingRecommendations = false;
 
@@ -63,10 +66,43 @@ class DetailViewModel extends ChangeNotifier {
   bool get loadingPlaylists => _loadingPlaylists;
   String? get playlistsError => _playlistsError;
   List<Playlist>? get playlists => _playlists;
-  int? get playlistsTotalPages => 
+  int? get playlistsTotalPages =>
       _playlistsPagination?.totalCount != null && _playlistsPagination?.pageSize != null
           ? (_playlistsPagination!.totalCount! / _playlistsPagination!.pageSize!).ceil()
           : null;
+
+  // 文件浏览导航 getters
+  List<Child> get currentPath => _currentPath;
+  bool get canNavigateUp => _currentPath.isNotEmpty;
+
+  /// 获取当前层级的子文件/文件夹
+  List<Child>? get currentChildren {
+    if (_files == null) return null;
+    if (_currentPath.isEmpty) return _files!.children;
+    return _currentPath.last.children;
+  }
+
+  /// 当前完整路径的展示字符串
+  String get currentPathDisplay {
+    if (_currentPath.isEmpty) return '/';
+    final path = _currentPath.map((c) => c.title ?? '').join('/');
+    return '/$path/';
+  }
+
+  /// 进入子文件夹
+  void navigateInto(Child folder) {
+    if (folder.type?.toLowerCase() != 'folder') return;
+    _currentPath = [..._currentPath, folder];
+    notifyListeners();
+  }
+
+  /// 返回上级目录
+  void navigateUp() {
+    if (_currentPath.isNotEmpty) {
+      _currentPath = _currentPath.sublist(0, _currentPath.length - 1);
+      notifyListeners();
+    }
+  }
 
   Future<void> _checkRecommendations() async {
     _checkingRecommendations = true;
@@ -102,6 +138,7 @@ class DetailViewModel extends ChangeNotifier {
         work.id.toString(),
         cancelToken: _cancelToken,
       );
+      _currentPath = []; // 重置到根目录
       AppLogger.info('文件加载成功: ${work.id}');
     } catch (e) {
       if (e is! DioException || e.type != DioExceptionType.cancel) {
@@ -158,7 +195,7 @@ class DetailViewModel extends ChangeNotifier {
         workId: work.id.toString(),
         page: page,
       );
-      
+
       _playlists = response.playlists;
       _playlistsPagination = response.pagination;
       AppLogger.info('收藏夹列表加载成功: ${_playlists?.length ?? 0}个收藏夹');
@@ -174,14 +211,14 @@ class DetailViewModel extends ChangeNotifier {
   Future<void> showPlaylistsDialog(BuildContext context) async {
     _loadingFavorite = true;
     notifyListeners();
-    
+
     try {
       await loadPlaylists();
       _loadingFavorite = false;
       notifyListeners();
-      
+
       if (!context.mounted) return;
-      
+
       await showDialog(
         context: context,
         builder: (context) => PlaylistSelectionDialog(
@@ -222,7 +259,7 @@ class DetailViewModel extends ChangeNotifier {
           workId: work.id.toString(),
         );
       }
-      
+
       // 更新本地收藏夹状态
       final index = _playlists?.indexWhere((p) => p.id == playlist.id);
       if (index != null && index != -1) {
@@ -230,7 +267,7 @@ class DetailViewModel extends ChangeNotifier {
           ..[index] = playlist.copyWith(exist: !(playlist.exist ?? false));
         notifyListeners();
       }
-      
+
       final action = (playlist.exist ?? false) ? '移除' : '添加';
       AppLogger.info('$action收藏成功: ${playlist.name}');
     } catch (e) {
@@ -248,7 +285,7 @@ class DetailViewModel extends ChangeNotifier {
         work.id.toString(),
         _apiService.convertMarkStatusToApi(status),
       );
-      
+
       _currentMarkStatus = status;
       AppLogger.info('更新标记状态成功: ${status.label}');
     } catch (e) {

@@ -9,7 +9,6 @@ import 'package:asmrapp/widgets/detail/work_files_skeleton.dart';
 import 'package:asmrapp/presentation/viewmodels/detail_viewmodel.dart';
 import 'package:asmrapp/widgets/detail/work_action_buttons.dart';
 import 'package:asmrapp/screens/similar_works_screen.dart';
-import 'package:asmrapp/widgets/detail/work_file_item.dart';
 import 'package:asmrapp/screens/image_viewer_screen.dart';
 
 class DetailScreen extends StatelessWidget {
@@ -54,7 +53,8 @@ class DetailScreen extends StatelessWidget {
                       PageRouteBuilder(
                         pageBuilder: (context, animation, secondaryAnimation) =>
                             SimilarWorksScreen(work: work),
-                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
                           const begin = Offset(1.0, 0.0);
                           const end = Offset.zero;
                           const curve = Curves.easeInOut;
@@ -94,43 +94,46 @@ class DetailScreen extends StatelessWidget {
 
                   if (viewModel.files != null) {
                     return WorkFilesList(
-                      files: viewModel.files!,
-				onFileTap: (file) async {
-  final type = file.type?.toLowerCase();
+                      children: viewModel.currentChildren,
+                      currentPath: viewModel.currentPathDisplay,
+                      canNavigateUp: viewModel.canNavigateUp,
+                      onNavigateUp: () => viewModel.navigateUp(),
+                      onFolderTap: (folder) =>
+                          viewModel.navigateInto(folder),
+                      onFileTap: (file) async {
+                        final type = file.type?.toLowerCase();
 
-  if (type == 'audio') {
-    // 音频 → 播放
-    try {
-      await viewModel.playFile(file, context);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('播放失败: $e')),
-        );
-      }
-    }
-  } else if (type == 'image') {
-    // 图片 → 全屏预览
-    final imageUrl = file.mediaDownloadUrl ?? file.mediaStreamUrl;
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ImageViewerScreen(
-            imageUrl: imageUrl,
-            title: file.title,
-          ),
-        ),
-      );
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('图片链接不存在')),
-        );
-      }
-    }
-  }
-  // folder / text / lrc / vtt 等其他类型暂不响应点击
-},
+                        if (type == 'audio') {
+                          try {
+                            await viewModel.playFile(file, context);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('播放失败: $e')),
+                              );
+                            }
+                          }
+                        } else if (type == 'image') {
+                          final imageUrl =
+                              file.mediaDownloadUrl ?? file.mediaStreamUrl;
+                          if (imageUrl != null && imageUrl.isNotEmpty) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ImageViewerScreen(
+                                  imageUrl: imageUrl,
+                                  title: file.title,
+                                ),
+                              ),
+                            );
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('图片链接不存在')),
+                              );
+                            }
+                          }
+                        }
+                      },
                     );
                   }
 
