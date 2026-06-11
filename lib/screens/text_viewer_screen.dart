@@ -1,6 +1,7 @@
+import 'dart:convert'; // 提供 utf8, latin1
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:charset/charset.dart';
+import 'package:charset/charset.dart'; // 提供 shiftJis, gbk, eucJp, Charset.detect
 
 /// 文本文件预览页面
 class TextViewerScreen extends StatefulWidget {
@@ -52,29 +53,9 @@ class _TextViewerScreenState extends State<TextViewerScreen> {
         return;
       }
 
-      // 使用 charset 库解码：依次尝试常见编码
-      String decoded;
-      try {
-        // 优先尝试 UTF-8
-        decoded = utf8.decode(bytes);
-        _detectedEncoding = 'UTF-8';
-      } catch (_) {
-        try {
-          // 尝试 Shift-JIS（日语常用）
-          decoded = shiftJis.decode(bytes);
-          _detectedEncoding = 'Shift-JIS';
-        } catch (_) {
-          try {
-            // 尝试 GBK（中文常用）
-            decoded = gbk.decode(bytes);
-            _detectedEncoding = 'GBK';
-          } catch (_) {
-            // 最后兜底用 latin1（不会失败）
-            decoded = latin1.decode(bytes);
-            _detectedEncoding = 'Latin-1';
-          }
-        }
-      }
+      // 解码字节 → 字符串
+      final (decoded, encoding) = _decodeBytes(bytes);
+      _detectedEncoding = encoding;
 
       setState(() {
         _content = decoded;
@@ -93,6 +74,32 @@ class _TextViewerScreenState extends State<TextViewerScreen> {
     }
   }
 
+  /// 解码字节数组，返回 (文本内容, 编码名称)
+  (String, String) _decodeBytes(List<int> bytes) {
+    // 1. 优先尝试 UTF-8（最常见）
+    try {
+      return (utf8.decode(bytes), 'UTF-8');
+    } catch (_) {
+      // UTF-8 解码失败，继续尝试其他编码
+    }
+
+    // 2. 使用 charset 包自动检测编码
+    try {
+      final detected = Charset.detect(
+        bytes,
+        orders: [shiftJis, eucJp, gbk],
+      );
+      if (detected != null) {
+        return (detected.decode(bytes), detected.name);
+      }
+    } catch (_) {
+      // 检测失败，继续 fallback
+    }
+
+    // 3. 使用 latin1
+    return (latin1.decode(bytes), 'Latin-1');
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -103,7 +110,7 @@ class _TextViewerScreenState extends State<TextViewerScreen> {
         actions: [
           if (_detectedEncoding.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: 12),
               child: Center(
                 child: Text(
                   _detectedEncoding,
