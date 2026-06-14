@@ -10,7 +10,7 @@ import 'package:asmrapp/presentation/viewmodels/detail_viewmodel.dart';
 import 'package:asmrapp/widgets/detail/work_action_buttons.dart';
 import 'package:asmrapp/screens/similar_works_screen.dart';
 import 'package:asmrapp/screens/image_viewer_screen.dart';
-import 'package:asmrapp/screens/text_viewer_screen.dart';  // 新增
+import 'package:asmrapp/screens/text_viewer_screen.dart';
 
 class DetailScreen extends StatelessWidget {
   final Work work;
@@ -124,25 +124,37 @@ class DetailScreen extends StatelessWidget {
                             }
                           }
                         } else if (type == 'image') {
-                          final imageUrl =
-                              file.mediaDownloadUrl ?? file.mediaStreamUrl;
-                          if (imageUrl != null && imageUrl.isNotEmpty) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => ImageViewerScreen(
-                                  imageUrl: imageUrl,
-                                  title: file.title,
-                                ),
-                              ),
-                            );
-                          } else {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('图片链接不存在')),
-                              );
-                            }
-                          }
-                        } else if (_isTextByExtension(fileName)) {
+  // 收集当前目录下所有图片，组成画廊
+  final allImageUrls = viewModel.currentChildren
+      .where((c) => (c.type?.toLowerCase() == 'image'))
+      .map((c) => c.mediaDownloadUrl ?? c.mediaStreamUrl ?? '')
+      .where((url) => url.isNotEmpty)
+      .toList();
+
+  final tappedUrl = file.mediaDownloadUrl ?? file.mediaStreamUrl;
+  final initialIndex = tappedUrl != null
+      ? allImageUrls.indexOf(tappedUrl)
+      : -1;
+
+  if (tappedUrl != null && tappedUrl.isNotEmpty) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ImageViewerScreen(
+          imageUrl: tappedUrl,
+          title: file.title,
+          imageUrls: allImageUrls,
+          initialIndex: initialIndex >= 0 ? initialIndex : 0,
+        ),
+      ),
+    );
+  } else {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('图片链接不存在')),
+      );
+    }
+  }
+} else if (_isTextByExtension(fileName)) {
                           // 通过扩展名识别文本文件
                           final textUrl =
                               file.mediaDownloadUrl ?? file.mediaStreamUrl;
