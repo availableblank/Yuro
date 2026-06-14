@@ -26,7 +26,7 @@ class DetailScreen extends StatelessWidget {
   bool _isTextByExtension(String filename) {
     final lower = filename.toLowerCase();
     return lower.endsWith('.txt') ||
-        lower.endsWith('.tt') ||
+        lower.endsWith('.vtt') ||
         lower.endsWith('.lrc');
   }
 
