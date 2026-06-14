@@ -3,11 +3,17 @@ import 'package:photo_view/photo_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class ImageViewerScreen extends StatefulWidget {
+  /// 单张图片 URL（向后兼容，画廊模式时此值为初始图片）
   final String imageUrl;
   final String? title;
 
+  /// 画廊模式：所有图片 URL 列表
   final List<String> imageUrls;
 
+  /// 画廊模式：与 imageUrls 一一对应的标题列表
+  final List<String?> imageTitles;
+
+  /// 画廊模式：初始显示的图片索引
   final int initialIndex;
 
   const ImageViewerScreen({
@@ -15,6 +21,7 @@ class ImageViewerScreen extends StatefulWidget {
     required this.imageUrl,
     this.title,
     this.imageUrls = const [],
+    this.imageTitles = const [],
     this.initialIndex = 0,
   });
 
@@ -26,12 +33,24 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   late final PageController _pageController;
   late int _currentIndex;
 
+  /// 是否进入画廊模式（图片数量 > 1）
   bool get _isGalleryMode => widget.imageUrls.length > 1;
+
+  /// 当前图片对应的标题
+  String get _currentTitle {
+    if (_isGalleryMode &&
+        widget.imageTitles.length > _currentIndex &&
+        widget.imageTitles[_currentIndex] != null &&
+        widget.imageTitles[_currentIndex]!.isNotEmpty) {
+      return widget.imageTitles[_currentIndex]!;
+    }
+    return widget.title ?? '图片预览';
+  }
 
   @override
   void initState() {
     super.initState();
-
+    // 确保初始索引在有效范围
     _currentIndex = widget.initialIndex.clamp(
       0,
       widget.imageUrls.isEmpty ? 0 : widget.imageUrls.length - 1,
@@ -58,10 +77,10 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.title ?? '图片预览',
+              _currentTitle,
               style: const TextStyle(fontSize: 16),
             ),
-
+            // 画廊模式显示页码指示器
             if (_isGalleryMode)
               Text(
                 '${_currentIndex + 1} / $totalCount',
@@ -80,6 +99,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     );
   }
 
+  /// 画廊模式：PageView 包裹多个 PhotoView，支持左右滑动
   Widget _buildGallery() {
     return PageView.builder(
       controller: _pageController,
@@ -95,6 +115,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     );
   }
 
+  /// 单图 PhotoView
   Widget _buildSingleImage(String url) {
     return Center(
       child: PhotoView(
