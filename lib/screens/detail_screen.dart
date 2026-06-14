@@ -126,10 +126,19 @@ class DetailScreen extends StatelessWidget {
                         } else if (type == 'image') {
   // 收集当前目录下所有图片，组成画廊
   final currentChildren = viewModel.currentChildren ?? [];
-  final allImageUrls = currentChildren
+  
+  // 所有图片的 (url, title)
+  final allImages = currentChildren
       .where((c) => (c.type?.toLowerCase() == 'image'))
+      .toList();
+
+  final allImageUrls = allImages
       .map((c) => c.mediaDownloadUrl ?? c.mediaStreamUrl ?? '')
       .where((url) => url.isNotEmpty)
+      .toList();
+
+  final allImageTitles = allImages
+      .map((c) => c.title)
       .toList();
 
   final tappedUrl = file.mediaDownloadUrl ?? file.mediaStreamUrl;
@@ -143,6 +152,7 @@ class DetailScreen extends StatelessWidget {
           imageUrl: tappedUrl,
           title: file.title,
           imageUrls: allImageUrls,
+          imageTitles: allImageTitles,
           initialIndex: initialIndex >= 0 ? initialIndex : 0,
         ),
       ),
