@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:get_it/get_it.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:asmrapp/utils/logger.dart';
 import 'package:asmrapp/core/cache/cache_settings.dart';
 
 /// 列表缓存管理器
-/// 将首页推荐、热门、搜索、作品详情等列表数据缓存到本地文件
-/// 在网络不稳定时可切换为离线模式读取缓存
+/// 将首页推荐、热门、搜索、作品详情等列表数据缓存到本地文件，
+/// 同时将 CachedNetworkImage 的图片缓存(作品封面)一并纳入列表缓存上限管理。
+/// 在网络不稳定时可切换为离线模式读取缓存。
 class ListCacheManager extends ChangeNotifier {
   static final ListCacheManager _instance = ListCacheManager._internal();
   factory ListCacheManager() => _instance;
@@ -18,8 +20,11 @@ class ListCacheManager extends ChangeNotifier {
   static const Duration _cacheDuration = Duration(days: 7);
   static const String _toggleKey = 'use_local_cache_for_lists';
   static const int defaultLimitMb = 50;
+  /// flutter_cache_manager 默认的图片缓存子目录名
+  static const String _imageCacheDirName = 'libCachedImageData';
 
   Directory? _cacheDir;
+  Directory? _imageCacheDir;
   bool _enabled = false;
 
   // ---- 便捷取值 ----
@@ -57,7 +62,9 @@ class ListCacheManager extends ChangeNotifier {
     }
   }
 
-  /// 获取缓存目录
+  // ========== 目录获取 ==========
+
+  /// 获取 JSON 缓存目录
   Future<Directory> _getCacheDir() async {
     if (_cacheDir != null) return _cacheDir!;
     final appDir = await getApplicationDocumentsDirectory();
@@ -68,15 +75,26 @@ class ListCacheManager extends ChangeNotifier {
     return _cacheDir!;
   }
 
+  /// 获取图片缓存目录（DefaultCacheManager 默认使用的目录）
+  Future<Directory> _getImageCacheDir() async {
+    if (_imageCacheDir != null) return _imageCacheDir!;
+    final tempDir = await getTemporaryDirectory();
+    _imageCacheDir = Directory('${tempDir.path}/$_imageCacheDirName');
+    return _imageCacheDir!;
+  }
+
+  // ========== 缓存键编码 ==========
+
   /// 将缓存键转为安全文件名
   String _keyToFilename(String key) {
     final bytes = utf8.encode(key);
     return base64Url.encode(bytes).replaceAll('=', '');
   }
 
+  // ========== JSON 缓存读写 ==========
+
   /// 读取缓存
   Future<Map<String, dynamic>?> get(String key) async {
-    // 禁用时不读取
     if (_isDisabled) return null;
 
     try {
@@ -109,7 +127,6 @@ class ListCacheManager extends ChangeNotifier {
 
   /// 写入缓存
   Future<void> set(String key, Map<String, dynamic> data) async {
-    // 禁用时不写入
     if (_isDisabled) return;
 
     try {
@@ -126,7 +143,7 @@ class ListCacheManager extends ChangeNotifier {
       await file.writeAsString(jsonEncode(json));
       AppLogger.debug('保存列表缓存: $key');
 
-      // 非无限模式下检查大小
+      // 非无限模式下检查缓存上限（JSON + 图片合计）
       if (!_isUnlimited) {
         await _enforceSizeLimit();
       }
@@ -135,32 +152,48 @@ class ListCacheManager extends ChangeNotifier {
     }
   }
 
-  /// 清除所有列表缓存
+  // ========== 清理 ==========
+
+  /// 清除所有列表缓存（JSON + 图片）
   Future<void> clear() async {
     try {
+      // 清除 JSON 缓存
       final dir = await _getCacheDir();
       if (await dir.exists()) {
         await dir.delete(recursive: true);
         _cacheDir = null;
       }
-      AppLogger.debug('已清除所有列表缓存');
+
+      // 清除图片缓存（通过 flutter_cache_manager 的 API）
+      await DefaultCacheManager().emptyCache();
+      _imageCacheDir = null;
+
+      AppLogger.debug('已清除所有列表缓存（含图片缓存）');
     } catch (e) {
       AppLogger.error('清除列表缓存失败', e);
     }
   }
 
-  /// 获取列表缓存总大小（字节）
+  // ========== 大小统计 ==========
+
+  /// 获取列表缓存总大小（JSON + 图片，单位：字节）
   Future<int> getSize() async {
     try {
-      final dir = await _getCacheDir();
-      if (!await dir.exists()) return 0;
-
       int totalSize = 0;
-      await for (final entity in dir.list()) {
-        if (entity is File && entity.path.endsWith('.json')) {
-          totalSize += await entity.length();
+
+      // JSON 缓存
+      final jsonDir = await _getCacheDir();
+      if (await jsonDir.exists()) {
+        await for (final entity in jsonDir.list()) {
+          if (entity is File && entity.path.endsWith('.json')) {
+            totalSize += await entity.length();
+          }
         }
       }
+
+      // 封面缓存
+      totalSize += await _getImageCacheFileSize();
+
       return totalSize;
     } catch (e) {
       AppLogger.error('获取列表缓存大小失败', e);
@@ -168,27 +201,84 @@ class ListCacheManager extends ChangeNotifier {
     }
   }
 
+  /// 获取封面缓存大小（单位：字节）
+  Future<int> getImageCacheSize() async {
+    try {
+      return await _getImageCacheFileSize();
+    } catch (e) {
+      AppLogger.error('获取封面缓存大小失败', e);
+      return 0;
+    }
+  }
+
+  /// 读取封面缓存目录下所有非数据库文件的总大小
+  Future<int> _getImageCacheFileSize() async {
+    final imageDir = await _getImageCacheDir();
+    if (!await imageDir.exists()) return 0;
+
+    int totalSize = 0;
+    await for (final entity in imageDir.list(recursive: true)) {
+      if (entity is File && !_isDatabaseFile(entity)) {
+        totalSize += await entity.length();
+      }
+    }
+    return totalSize;
+  }
+
+  // ========== 上限强制 ==========
+
+  /// 强制执行缓存大小限制（合并 JSON 和图片缓存，按最旧优先清理）
+  /// 可在设置页面手动调用，或由 [set] 自动触发
+  Future<void> enforceSizeLimit() async {
+    await _enforceSizeLimit();
+  }
+
   // ---- 私有 ----
 
-  /// 按 MB 上限清理最旧文件
+  /// 判断是否为 flutter_cache_manager 的数据库文件
+  bool _isDatabaseFile(File file) {
+    final name = file.path.split(Platform.pathSeparator).last;
+    return name == 'cache.db' ||
+        name == 'cache.db-shm' ||
+        name == 'cache.db-wal';
+  }
+
+  /// 按 MB 上限清理最旧文件（JSON + 图片统一排序）
   Future<void> _enforceSizeLimit() async {
     try {
       final maxBytes = _limitMb * 1024 * 1024;
       final currentSize = await getSize();
       if (currentSize <= maxBytes) return;
 
-      AppLogger.debug('列表缓存超出上限 (${_limitMb}MB)，开始清理...');
+      AppLogger.debug(
+          '列表缓存超出上限 (${_limitMb}MB)，当前: ${(currentSize / 1024 / 1024).toStringAsFixed(1)}MB，开始清理（含图片）...');
 
-      final dir = await _getCacheDir();
+      // 收集所有可清理的文件
       final files = <File>[];
-      await for (final entity in dir.list()) {
-        if (entity is File && entity.path.endsWith('.json')) {
-          files.add(entity);
+
+      // JSON 缓存文件
+      final jsonDir = await _getCacheDir();
+      if (await jsonDir.exists()) {
+        await for (final entity in jsonDir.list()) {
+          if (entity is File && entity.path.endsWith('.json')) {
+            files.add(entity);
+          }
+        }
+      }
+
+      // 封面缓存文件（排除数据库文件）
+      final imageDir = await _getImageCacheDir();
+      if (await imageDir.exists()) {
+        await for (final entity in imageDir.list(recursive: true)) {
+          if (entity is File && !_isDatabaseFile(entity)) {
+            files.add(entity);
+          }
         }
       }
 
       // 按修改时间升序（最旧的在前）
-      files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+      files.sort(
+          (a, b) => a.statSync().modified.compareTo(b.statSync().modified));
 
       var remaining = currentSize;
       for (final file in files) {
@@ -196,8 +286,11 @@ class ListCacheManager extends ChangeNotifier {
         final len = await file.length();
         await file.delete();
         remaining -= len;
-        AppLogger.debug('删除超量列表缓存: ${file.path}');
+        AppLogger.debug('删除超量缓存: ${file.path.split(Platform.pathSeparator).last}');
       }
+
+      AppLogger.debug(
+          '缓存清理完成，剩余: ${(remaining / 1024 / 1024).toStringAsFixed(1)}MB');
     } catch (e) {
       AppLogger.error('执行列表缓存大小限制失败', e);
     }
